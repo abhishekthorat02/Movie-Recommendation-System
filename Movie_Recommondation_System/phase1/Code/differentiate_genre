@@ -1,0 +1,76 @@
+#!/usr/bin/env python
+
+import operator
+import sys
+import copy
+import math
+from common import basics
+import pandas as pd
+import numpy as np
+from common.createDataSet import CreateDataSet
+from common.tfidf import TfIdf
+
+# get input from shell
+if len(sys.argv) != 4:
+    print("Use ---> differentiate_genre genre1 genre2 model")
+    exit(0)
+
+genre1 = sys.argv[1]
+genre2 = sys.argv[2]
+model = sys.argv[3]
+
+
+# variable init
+data_set = CreateDataSet()
+tfidf = TfIdf()
+
+# PART 1 -  TF-IDF-DIFF
+# Query to get all the movies played for given genres
+
+if model == "TF-IDF-DIFF":
+    genre_tag_map = {}
+    genre_movie_map = {}
+    complete_movie_tag_map = {}
+    complete_movie_timestamp_map = {}
+    genre_timestamp_map = {}
+    tag_weight = []
+    for genre in [genre1,genre2]:
+        movie_tag_map, tagid_tag_map, movie_timestamp_map, movies = data_set.get_movie_tag_by_genre(genre, timestamp_map=True)
+        genre_movie_map[genre] = movies
+        list_of_tags = basics.combine_map_value_list(movie_tag_map)
+        list_of_timestamp = basics.combine_map_value_list(movie_timestamp_map)
+        genre_tag_map[genre] = list_of_tags
+        genre_timestamp_map[genre] = list_of_timestamp
+        # Calculate time weighted TF
+        for movie in movie_tag_map:
+            tfidf.calculate_tf(movie, movie_tag_map[movie])
+
+    # Calculate TF-IDF for all documents
+
+    tfidf.calculate_tfidf()
+    for genre in [genre1, genre2]:
+        print("Genre -"+genre)
+        subset = {}
+        tfidf_copy = copy.deepcopy(tfidf.tfidf)
+        for elem in tfidf_copy:
+            if elem[0] in genre_movie_map[genre]:
+                subset.update(elem[1])
+        tag_weight.append(subset)
+        df = pd.DataFrame(subset.items(), columns=['tag', 'weight']).sort_values('weight',ascending=False)
+        print(df)
+    print("Similarity - "+ str(tfidf.manhattan_distance(tag_weight[0],tag_weight[1])))
+
+# PART 2 -  P-DIFF1
+
+if model == "P-DIFF1":
+    tag_weight_map = tfidf.calculate_pdiff1(genre1,genre2)
+    df = pd.DataFrame(tag_weight_map.items(), columns=['tag', 'weight']).sort_values('weight',ascending=False)
+    print(df)
+
+# PART 3 - P-DIFF2
+
+
+if model == "P-DIFF2":
+    tag_weight_map = tfidf.calculate_pdiff2(genre1, genre2)
+    df = pd.DataFrame(tag_weight_map.items(), columns=['tag', 'weight']).sort_values('weight',ascending=False)
+    print(df)

@@ -1,0 +1,23 @@
+Unable to connect KDB
+Unable to connect KDB
+Unable to connect KDB
+ERROR-FETCH-KDB: Unable To fetch data for query - exec movieid from .moviedata.mlmovies where genres=`$"Action"
+ERROR-FETCH-KDB: Unable To fetch data for query - exec movieid from .moviedata.mlmovies where genres=`$"Action"
+Can not convert to Symbol
+Can not convert to Symbol
+ERROR-FETCH-KDB: Unable To fetch data for query - exec movieid from .moviedata.mlmovies where string[genres] like "A"
+ERROR-FETCH-KDB: Unable To fetch data for query - exec movieid from .moviedata.mlmovies where string[genres] like "A"
+ERROR-FETCH-KDB: Unable To fetch data for query - exec movieid from .moviedata.mlmovies where string[genres] like "A"
+ERROR-FETCH-KDB: Unable To fetch data for query - exec movieid from .moviedata.mlmovies where string[genres] like "A"
+ERROR-FETCH-KDB: Unable To fetch data for query - select movieid,tagid,timestamp,tag from (`movieid xgroup select  movieid,tagid,timestamp,tag:tagid.tag from .moviedata.mltags) where movieid in `$string(Action;Comedy)
+ERROR-FETCH-KDB: Unable To fetch data for query - select movieid,tagid,timestamp,tag from (`movieid xgroup select  movieid,tagid,timestamp,tag:tagid.tag from .moviedata.mltags) where movieid in `$string(Action;Comedy)
+ERROR-FETCH-KDB: Unable To fetch data for query - exec movieid from .moviedata.mlmovies where string[genres] like "A"
+ERROR-FETCH-KDB: Unable To fetch data for query - exec movieid from .moviedata.mlmovies where string[genres] like "A"
+ERROR-FETCH-KDB: Unable To fetch data for query - select movieid,actorid,rank from (`movieid xgroup select  movieid,actorid,rank:1%actor_movie_rank from .moviedata.movie_actor) where movieid in `$string(3977;4058;4071;4142;4156;4157;4158;4164;4175;4176;4249;4276;4281;4355;4360;4557;4626;4627;4630;4636;4639;4641;4680;4723;4807;4881;4896;4932;4955;4986;5160;5170;5188;5231;5306;5348;5355;5386;5391;5539;5701;5777;5802;6089;6113;6165;6187;6263;6266;6371;6424;6475;6508;6591;6626;6658;6720;6766;6818;7037;7042;7057;7148;7181;7183;7203;7265;7308;7322;7507;7750;7763;7854;7939;7940;8112;8139;8157;8243;8250;8660;8679;8758;8787;8899;8906;9074;9091)
+ERROR-FETCH-KDB: Unable To fetch data for query - select movieid,actorid,rank from (`movieid xgroup select  movieid,actorid,rank:1%actor_movie_rank from .moviedata.movie_actor) where movieid in `$string(3977;4058;4071;4142;4156;4157;4158;4164;4175;4176;4249;4276;4281;4355;4360;4557;4626;4627;4630;4636;4639;4641;4680;4723;4807;4881;4896;4932;4955;4986;5160;5170;5188;5231;5306;5348;5355;5386;5391;5539;5701;5777;5802;6089;6113;6165;6187;6263;6266;6371;6424;6475;6508;6591;6626;6658;6720;6766;6818;7037;7042;7057;7148;7181;7183;7203;7265;7308;7322;7507;7750;7763;7854;7939;7940;8112;8139;8157;8243;8250;8660;8679;8758;8787;8899;8906;9074;9091)
+ERROR-FETCH-KDB: Unable To fetch data for query - select actorid, tagid,actor_movie_rank from `actorid xgroup (0!.moviedata.movie_actor) uj `movieid xkey .moviedata.mltags
+ERROR-FETCH-KDB: Unable To fetch data for query - select actorid, tagid,actor_movie_rank from `actorid xgroup (0!.moviedata.movie_actor) uj `movieid xkey .moviedata.mltags
+ERROR-FETCH-KDB: Unable To fetch data for query - select actorid, tagid,actor_movie_rank from `actorid xgroup (0!.moviedata.movie_actor) uj `movieid xkey .moviedata.mltags
+ERROR-FETCH-KDB: Unable To fetch data for query - exec actorid from .moviedata.mlmovies where movieid=`$"4057"
+ERROR-FETCH-KDB: Unable To fetch data for query - exec actorid from .moviedata.mlmovies where movieid=`$"4057"
+ERROR-FETCH-KDB: Unable To fetch data for query - exec actorid from .moviedata.mlmovies where movieid=`$"4057"

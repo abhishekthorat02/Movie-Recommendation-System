@@ -1,0 +1,7 @@
+Unable to connect KDB
+Unable to connect KDB
+Unable to connect KDB
+ERROR-FETCH-KDB: Unable To fetch data for query - exec movieid from .moviedata.mlmovies where genres=`$"Action"
+ERROR-FETCH-KDB: Unable To fetch data for query - exec movieid from .moviedata.mlmovies where genres=`$"Action"
+Can not convert to Symbol
+Can not convert to Symbol

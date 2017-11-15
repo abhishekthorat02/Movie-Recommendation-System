@@ -1,0 +1,134 @@
+#!/usr/bin/env python
+
+import operator
+import sys
+
+import numpy as np
+import copy
+from scipy import spatial
+from sklearn.datasets.base import load_data
+
+from common.createDataSet import CreateDataSet
+from common.tfidf import TfIdf
+from scipy import linalg
+from common import basics
+from sklearn.decomposition import LatentDirichletAllocation
+
+# get input from shell
+if len(sys.argv) != 2:
+    print("Use ---> actor_rank_part1 actorid")
+    exit(0)
+
+
+actor_id = sys.argv[1]
+
+similarity_matrix = []
+data_set = CreateDataSet()
+
+# get tf-idf object feature  for all actors tag relationship
+
+tfidf = TfIdf()
+object_feature_matrix, all_actors, all_tags, actor_tag_map = tfidf.get_actors_tags_space()
+
+#  TF-IDF using cosine similarity
+#  find nearest 10 neighbours using adjusted cosine similarity
+
+input_actor_tag_vector = object_feature_matrix[all_actors.index(actor_id)]
+reduced_object_feature_matrix = np.delete(object_feature_matrix, all_actors.index(actor_id), 0)
+reduced_actors = copy.deepcopy(all_actors)
+reduced_actors.remove(actor_id)
+for row in reduced_object_feature_matrix:
+    similarity_matrix.append(1-spatial.distance.cosine(row, input_actor_tag_vector))
+
+actor_distance_tuple = zip(reduced_actors, similarity_matrix)
+actor_distance_tuple.sort(key=lambda tup: tup[1],reverse=True)
+
+print("1. ---------TF-IDF ----------- ")
+print("---------10 actors ----------- ")
+for tuple in actor_distance_tuple[0:10]:
+    print(tuple)
+
+
+# SVD computation
+print("\n 1.SVD")
+
+# SVD
+U, S, VT = linalg.svd(object_feature_matrix, full_matrices=False)
+similarity_matrix = []
+
+#  find nearest 10 neighbours using adjusted cosine similarity
+
+# reduce matrix to take 5 column values only
+reduced_object_feature_matrix = (U*S)[:, 0:5]
+input_actor_tag_vector = reduced_object_feature_matrix[all_actors.index(actor_id)]
+reduced_object_feature_matrix = np.delete(reduced_object_feature_matrix, all_actors.index(actor_id), 0)
+for row in reduced_object_feature_matrix:
+    similarity_matrix.append(1-spatial.distance.cosine(row, input_actor_tag_vector))
+
+actor_distance_tuple = zip(reduced_actors, similarity_matrix)
+actor_distance_tuple.sort(key=lambda tup: tup[1], reverse=True)
+
+print("1. ---------SVD-Cosine ----------- ")
+print("---------10 actors ----------- ")
+for tuple in actor_distance_tuple[0:10]:
+    print(tuple)
+
+# PCA computation
+print("\n 2.PCA")
+
+# PCA
+U, S, VT = linalg.svd(np.cov(object_feature_matrix), full_matrices=False)
+similarity_matrix = []
+
+#  find nearest 10 neighbours using adjusted cosine similarity
+
+# reduce matrix to take 5 column values only
+reduced_object_feature_matrix = (U*S)[:, 0:5]
+input_actor_tag_vector = reduced_object_feature_matrix[all_actors.index(actor_id)]
+reduced_object_feature_matrix = np.delete(reduced_object_feature_matrix, all_actors.index(actor_id), 0)
+for row in reduced_object_feature_matrix:
+    similarity_matrix.append(1-spatial.distance.cosine(row, input_actor_tag_vector))
+
+actor_distance_tuple = zip(reduced_actors, similarity_matrix)
+actor_distance_tuple.sort(key=lambda tup: tup[1], reverse=True)
+
+print("2. ---------PCA-Cosine ----------- ")
+print("---------10 actors ----------- ")
+for tuple in actor_distance_tuple[0:10]:
+    print(tuple)
+
+
+# LDA computation
+print("\n 2.LDA")
+
+# create object feature matrix with zero values
+object_feature_matrix = np.zeros(shape=(len(all_actors),len(all_tags)))
+# fill up the matrix
+object_feature_matrix = basics.fill_matrix_count(object_feature_matrix, actor_tag_map, all_actors, all_tags)
+
+
+lda = LatentDirichletAllocation(n_components=len(all_actors),
+                                max_iter=5,
+                                learning_method='online',
+                                learning_offset=50.,
+                                random_state=0)
+lda.fit_transform(object_feature_matrix)
+
+similarity_matrix = []
+
+#  find nearest 10 neighbours using adjusted cosine similarity
+
+# reduce matrix to take 5 column values only
+reduced_object_feature_matrix = lda.components_[:, 0:5]
+input_actor_tag_vector = reduced_object_feature_matrix[all_actors.index(actor_id)]
+reduced_object_feature_matrix = np.delete(reduced_object_feature_matrix, all_actors.index(actor_id), 0)
+for row in reduced_object_feature_matrix:
+    similarity_matrix.append(1-spatial.distance.cosine(row, input_actor_tag_vector))
+
+actor_distance_tuple = zip(reduced_actors, similarity_matrix)
+actor_distance_tuple.sort(key=lambda tup: tup[1], reverse=True)
+
+print("3. ---------LDA-Cosine ----------- ")
+print("---------10 actors ----------- ")
+for tuple in actor_distance_tuple[0:10]:
+    print(tuple)

@@ -1,0 +1,116 @@
+#!/usr/bin/env python
+
+import operator
+import sys
+
+import numpy as np
+from scipy import linalg
+import pandas as pd
+from common import basics
+from common.createDataSet import CreateDataSet
+from common.tfidf import TfIdf
+from sklearn.decomposition import LatentDirichletAllocation
+
+# get input from shell
+if len(sys.argv) != 2:
+    print("Use ---> print_genre_vector genres")
+    exit(0)
+
+genre = sys.argv[1]
+
+# variable init
+movie_actor_map = {}
+movie_rank_map = {}
+data_set = CreateDataSet()
+tfidf = TfIdf()
+
+# PART 1 -  get of movies based on genre
+
+sym = data_set.get_symbol_list(data_set.get_movies_by_genre(genre.split("|")))
+
+# PART 2 - get complete data set
+# Get all the tags for movies for give genre
+movie_tag_query = "select movieid,actorid,rank_value from (`movieid xgroup select  movieid,actorid,rank_value:1%actor_movie_rank from .moviedata.movie_actor) where movieid in `$string("+sym+")"
+
+# Execute Query
+
+movie_tag_data = data_set.get_data_from_kdb(movie_tag_query)
+
+# Add  tag-movie and tag-timestamp relationship to map
+
+for elem in movie_tag_data:
+    movie_actor_map[elem[0]] = np.array(elem[1]).tolist()
+    movie_rank_map[elem[0]] = np.array(elem[2]).tolist()
+
+# PART 3 - TF IDF
+
+# Calculate TF per document
+
+for key in movie_actor_map:
+    tfidf.calculate_tf(key, movie_actor_map[key])
+
+
+
+# Normalize data
+rank_data = {'rank': basics.combine_map_value_list(movie_rank_map)}
+df = data_set.normalize_data(rank_data)
+normalized_rank = df['rank'].tolist()
+
+# Calculate time weighted TF
+tfidf.calculate_timeweighted_tf(movie_actor_map,normalized_rank)
+
+# Calculate TF-IDF for all documents
+tfidf.calculate_tfidf()
+
+################################################################
+#
+#                       <----PHASE 2---->
+#
+#
+#################################################################
+
+# calculate all tags and all movies
+
+allactors = basics.combine_map_value_list(movie_actor_map)
+allmovies = movie_actor_map.keys()
+
+# create object feature matrix with zero values
+object_feature_matrix = np.zeros(shape=(len(allmovies),len(allactors)))
+# fill up the matrix
+object_feature_matrix = basics.fill_matrix(object_feature_matrix, allmovies, allactors, tfidf.tfidf)
+
+# PCA computation
+
+# object feature covariance matrix
+object_feature_covariance =  np.cov(object_feature_matrix.transpose())
+
+
+# compute PCA and get 4 components
+U, S, VT = linalg.svd(object_feature_covariance, full_matrices=False)
+
+# print top 4
+print("---------Top Four Features------------")
+print("\n 1.PCA")
+print(pd.DataFrame(VT).head(4))
+
+
+# SVD computation
+
+U, S, VT = linalg.svd(object_feature_matrix, full_matrices=False)
+print("\n 2.SVD")
+print(pd.DataFrame(VT).head(4))
+
+
+# create object feature matrix with zero values
+object_feature_matrix = np.zeros(shape=(len(allmovies),len(allactors)))
+# fill up the matrix
+object_feature_matrix = basics.fill_matrix_count(object_feature_matrix, movie_actor_map,allmovies, allactors)
+# LDA computation
+print("\n 3.LDA")
+lda = LatentDirichletAllocation(n_components=4, max_iter=5,
+                                learning_method='online',
+                                learning_offset=50.,
+                                random_state=0)
+lda.fit_transform(object_feature_matrix)
+
+print(lda.components_)

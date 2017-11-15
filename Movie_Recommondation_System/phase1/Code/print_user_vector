@@ -1,0 +1,110 @@
+#!/usr/bin/env python
+
+import operator
+import sys
+
+import numpy as np
+
+from common import basics
+from common.createDataSet import CreateDataSet
+from common.tfidf import TfIdf
+
+# get input from shell
+if len(sys.argv) != 3:
+    print("Use ---> print_genre_vector genres model")
+    exit(0)
+
+user_id = sys.argv[1]
+model = sys.argv[2]
+
+# variable init
+movie_tag_map = {}
+movie_timestamp_map = {}
+tagid_tag_map = {}
+data_set = CreateDataSet()
+tfidf = TfIdf()
+
+# PART 1 -  get of movies based on user_id
+
+# Query to get all the movies played for give user_id
+
+movie_user_query = "exec movieid from .moviedata.mlratings where userid=`"+user_id
+
+# Execute Query
+
+movies = np.array(data_set.get_data_from_kdb(movie_user_query)).tolist()
+
+
+
+# PART 2 - get complete data set
+
+sym = data_set.get_symbol_list(movies)
+
+# Get all the tags for movies for give user
+
+movie_tag_query = "select movieid,tagid,timestamp,tag from (`movieid xgroup select  movieid,tagid,timestamp,tag:tagid.tag from .moviedata.mltags) where movieid in `$string("+sym+")"
+
+# Execute Query
+
+movie_tag_data = data_set.get_data_from_kdb(movie_tag_query)
+
+# Add  tag-movie and tag-timestamp relationship to map
+
+for elem in movie_tag_data:
+    movie_tag_map[elem[0]] = np.array(elem[1]).tolist()
+    movie_timestamp_map[elem[0]] = np.array(elem[2]).tolist()
+    tagid_tag_map.update(dict(zip(np.array(elem[1]).tolist(), np.array(elem[3]).tolist())))
+
+
+# PART 3 - TF IDF
+
+# Calculate TF per document
+
+for key in movie_tag_map:
+    tfidf.calculate_tf(key,movie_tag_map[key])
+
+# Create map for normalization
+
+timestamp_data = {'timestamp': basics.combine_map_value_list(movie_timestamp_map)}
+
+# Normalize data
+
+df = data_set.normalize_data(timestamp_data)
+normalized_timestamp = df['timestamp'].tolist()
+
+# Calculate time weighted TF
+tfidf.calculate_timeweighted_tf(movie_tag_map,normalized_timestamp)
+
+# Calculate TF-IDF for all documents
+
+
+tfidf.calculate_tfidf()
+
+# PART 4 - DATA NORMALIZATION AND WEIGHT ASSIGNMENT
+
+# Normalize timestamp data
+
+
+if model == "TF":
+    input_map = tfidf.tf
+else:
+    input_map = tfidf.tfidf
+
+
+# Combine common tag vectors
+final_weight = {}
+
+for index in range(len(input_map)):
+    for tag in input_map[index][1]:
+        if key in final_weight.keys():
+            final_weight[tag] += input_map[index][1][tag]
+        else:
+            final_weight[tag] = input_map[index][1][tag]
+
+
+# Sort tag based on weights
+final_weight = sorted(final_weight.items(),key=operator.itemgetter(1),reverse=True)
+
+# print final_weight
+for key,value in final_weight:
+    print("Tag:" + tagid_tag_map[key] + " Weight:" + str(value))

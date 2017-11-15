@@ -1,0 +1,114 @@
+#!/usr/bin/env python
+
+import operator
+import sys
+
+import numpy as np
+
+from common import basics
+from common.createDataSet import CreateDataSet
+from common.tfidf import TfIdf
+
+# get input from shell
+if len(sys.argv) != 3:
+    print("Use ---> print_actor_vector actorId model")
+    exit(0)
+
+actor_id = sys.argv[1]
+model = sys.argv[2]
+
+# variable init
+movie_rank_map = {}
+movie_tag_map = {}
+tagid_tag_map = {}
+movie_timestamp_map = {}
+data_set = CreateDataSet()
+tfidf = TfIdf()
+
+# PART 1 -  mapping of movie-actor with weights
+
+# Query to get all the movies played by given actor
+
+movie_actor_query = "select movieid,1%actor_movie_rank from `actorid xgroup .moviedata.movie_actor where actorid=`$string("+actor_id+")"
+
+# Execute Query
+
+movie_actor_data = data_set.get_data_from_kdb(movie_actor_query)
+
+# convert numpy array to python List
+
+movies = np.array(movie_actor_data[0][0]).tolist()
+rank = np.array(movie_actor_data[0][1]).tolist()
+
+# Map Movie with actor_movie_rank_weight
+
+for index in range(len(movies)):
+    movie_rank_map[movies[index]] = rank[index]
+
+
+# PART 2 - get complete data set
+
+sym = data_set.get_symbol_list(movie_rank_map.keys())
+
+# Get all the tags for movies played by actor
+
+movie_tag_query = "select movieid,tagid,timestamp,tag from (`movieid xgroup select  movieid,tagid,timestamp,tag:tagid.tag from .moviedata.mltags) where movieid in `$string("+sym+")"
+
+# Execute Query
+
+movie_tag_data = data_set.get_data_from_kdb(movie_tag_query)
+
+# Add  tag-movie and tag-timestamp relationship to map
+
+for elem in movie_tag_data:
+    movie_tag_map[elem[0]] = np.array(elem[1]).tolist()
+    movie_timestamp_map[elem[0]] = np.array(elem[2]).tolist()
+    tagid_tag_map.update(dict(zip(np.array(elem[1]).tolist(), np.array(elem[3]).tolist())))
+
+# PART 3 - TF IDF
+
+# Calculate TF per document
+
+for key in movie_tag_map:
+    tfidf.calculate_tf(key, movie_tag_map[key])
+
+# Normalize timestamp data
+timestamp_data = {'timestamp': basics.combine_map_value_list(movie_timestamp_map)}
+df = data_set.normalize_data(timestamp_data)
+normalized_timestamp = df['timestamp'].tolist()
+
+# Calculate time weighted tf
+tfidf.calculate_timeweighted_tf(movie_tag_map,normalized_timestamp)
+
+# Calculate TF-IDF for all documents
+tfidf.calculate_tfidf()
+
+# PART 4 - DATA NORMALIZATION AND WEIGHT ASSIGNMENT
+
+# Normalize Movie-actor-rank
+
+# Create map for normalization
+
+rank_data = {'rank':movie_rank_map.values()}
+df = data_set.normalize_data(rank_data)
+normalized_rank = df['rank'].tolist()
+
+if model == "TF":
+    input_map = tfidf.tf
+else:
+    input_map = tfidf.tfidf
+
+# combine tag vectors on movie_actor_rank
+
+final_weight = {}
+for index in range(len(input_map)):
+    for key in input_map[index][1]:
+        final_weight[key] = input_map[index][1][key] + normalized_rank[index]
+
+
+# Sort tag based on weights
+final_weight = sorted(final_weight.items(),key=operator.itemgetter(1),reverse=True)
+
+# print final_weight
+for key,value in final_weight:
+    print("Tag:" + tagid_tag_map[key] + " Weight:" + str(value))
